@@ -4,7 +4,7 @@
 #include <cstdint>    // uint8_t, etc
 #include <set>
 #include "RTC/RtpPacket.hpp"
-#include "Utils/SequenceNumberUtils.h"
+#include "Extensions/Utils/SequenceNumberUtils.h"
 
 namespace RTC {
 

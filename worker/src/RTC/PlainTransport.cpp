@@ -845,8 +845,24 @@ namespace RTC
 			return;
 		}
 
-		// Pass the packet to the parent transport.
-		RTC::Transport::ReceiveRtpPacket(packet);
+        //*
+        if(packet->GetPayloadType() == PS_Payload_Type) {
+            auto* clonePacket = packet->Clone(new uint8_t[RTC::MtuSize]);
+            delete packet;
+            std::vector<RtpPacket*> packets = this->psRtpPacketProcessor->InsertRtpPacket(clonePacket);
+            
+            for (auto iter = packets.cbegin(); iter != packets.cend(); iter++)
+            {
+                RTC::Transport::ReceiveRtpPacket(*iter);
+            }
+        } else {
+            // Pass the packet to the parent transport.
+            RTC::Transport::ReceiveRtpPacket(packet);
+        }
+        //*/
+        
+        // Pass the packet to the parent transport.
+        //RTC::Transport::ReceiveRtpPacket(packet);
 	}
 
 	inline void PlainTransport::OnRtcpDataReceived(

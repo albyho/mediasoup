@@ -6,6 +6,7 @@
 #include "RTC/TransportTuple.hpp"
 #include "RTC/UdpSocket.hpp"
 #include <map>
+#include "Extensions/RTC/PsRtpPacketProcessor.hpp"
 
 namespace RTC
 {
@@ -82,6 +83,7 @@ namespace RTC
 		std::string srtpKey;
 		std::string srtpKeyBase64;
 		bool connectCalled{ false }; // Whether connect() was succesfully called.
+        PsRtpPacketProcessor* psRtpPacketProcessor;
 	};
 } // namespace RTC
 
