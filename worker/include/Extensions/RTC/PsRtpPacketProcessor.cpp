@@ -9,10 +9,10 @@
 namespace RTC
 {
 
-constexpr size_t kMaxVideoFrameBufferBytes = 1024 * 1024 * 4;
+constexpr size_t kMaxVideoFrameBufferBytes = 1024 * 1024;
 constexpr size_t kMaxAudioFrameBufferBytes = 1024 * 1024;
 constexpr size_t kStartPacketBufferSize    = 128;
-constexpr size_t kMaxPacketBufferSize      = 1024 * 4;
+constexpr size_t kMaxPacketBufferSize      = 1024;
 
 /* Public methods. */
 
@@ -32,23 +32,23 @@ PsRtpPacketProcessor::~PsRtpPacketProcessor()
 
 std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* rtp_packet)
 {
-    std::vector<RtpPacket*> vector;
+    std::vector<RtpPacket*> result;
     
     PsRtpPacketBuffer::InsertResult insertResult;
     if(rtp_packet->GetPayloadLength() > 0) {
-        auto* packet = new PsRtpPacketBuffer::Packet(rtp_packet);
-        insertResult = this->psRtpPacketBuffer->InsertPacket(std::unique_ptr<PsRtpPacketBuffer::Packet>(packet));
+        std::unique_ptr<PsRtpPacketBuffer::Packet> packet(new PsRtpPacketBuffer::Packet(rtp_packet));
+        insertResult = this->psRtpPacketBuffer->InsertPacket(std::move(packet));
     } else {
         // TODO：如果新的一帧的第一个包或前几包没有 payload，在重新打包 RtpPacket 的时候会导致 seq_num 与前一帧的包不连续。
         insertResult = this->psRtpPacketBuffer->InsertPadding(rtp_packet->GetSequenceNumber());
     }
 
     auto& packets = insertResult.packets;
-    if(packets.size() > 0) {
+    if(!packets.empty()) {
         Demux(packets);
         if(this->videoFrameBufferOffset == 0 && this->audioFrameBufferOffset == 0) {
             MS_WARN_TAG(rtp, "Too many empty packets.");
-            return vector;
+            return result;
         }
 //        MS_DEBUG_TAG(rtp, "New H.264 frame: %02X %02X %02X %02X %02X",
 //                     this->videoFrameBuffer[0],
@@ -62,28 +62,26 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
         this->psRtpPacketBuffer->ClearTo(packets[packets.size() - 1]->seq_num);
         
         if(this->videoFrameBufferOffset > 0) {
-            auto newVideoPackets = RtpPacketPacker::H264Pack(this->videoFrameBuffer,
-                                                     this->videoFrameBufferOffset,
-                                                     packets[0]->seq_num,
-                                                     packets[packets.size() - 1]->seq_num,
-                                                     packets[0]->timestamp,
-                                                     rtp_packet->GetSsrc());
-            
-            for (auto iter = newVideoPackets.cbegin(); iter != newVideoPackets.cend(); iter++)
-            {
-                vector.push_back(*iter);
-            }
-            
             for (auto iter = packets.cbegin(); iter != packets.cend(); iter++)
             {
                 delete (*iter)->rtp_packet;
             }
             
-            // TODO: delete 提取的 insertResult.packets 的全部 Packet (std::unique_ptr<Packet> 获取可以不手工 delete?)
+            std::vector<RtpPacket*> newVideoPackets = RtpPacketPacker::H264Pack(this->videoFrameBuffer,
+                                                             this->videoFrameBufferOffset,
+                                                             packets[0]->seq_num,
+                                                             packets[packets.size() - 1]->seq_num,
+                                                             packets[0]->timestamp,
+                                                             packets[0]->ssrc);
+            
+            for (auto iter = newVideoPackets.cbegin(); iter != newVideoPackets.cend(); iter++)
+            {
+                //result.push_back(*iter);
+            }
         }
     }
     
-    return vector;
+    return result;
 }
 
 void PsRtpPacketProcessor::Demux(const std::vector<std::unique_ptr<PsRtpPacketBuffer::Packet>>& packets)
@@ -115,9 +113,9 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
         size_t read = demuxNextPacketReadState->demuxNextPacketReadBytes <= payloadLength ?
                         demuxNextPacketReadState->demuxNextPacketReadBytes : payloadLength;
         if(demuxNextPacketReadState->demuxNextPacketReadMode == DemuxNextPacketReadMode::ReadVideo) {
-            FetchData(&processPtr, payloadLength, read, demuxNextPacketReadState, &completeLength);
+            FetchData(&processPtr, read, demuxNextPacketReadState, &completeLength);
         } else if(demuxNextPacketReadState->demuxNextPacketReadMode == DemuxNextPacketReadMode::ReadAudio) {
-            FetchData(&processPtr, payloadLength, read, demuxNextPacketReadState, &completeLength);
+            FetchData(&processPtr, read, demuxNextPacketReadState, &completeLength);
         } else {
             MS_WARN_TAG(rtp, "Not supported DemuxNextPacketReadMode::Guest.");
         }
@@ -245,7 +243,9 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
             completeLength += sizeof(PsePacketHeaderPrefix) + header->pesHeaderDataLength;
 
             size_t read = completeLength + pesBodyLength <= payloadLength ? pesBodyLength : payloadLength - completeLength;
-            FetchData(&processPtr, pesBodyLength, read, demuxNextPacketReadState, &completeLength);
+            demuxNextPacketReadState->demuxNextPacketReadMode = DemuxNextPacketReadMode::ReadVideo;
+            demuxNextPacketReadState->demuxNextPacketReadBytes = pesBodyLength;
+            FetchData(&processPtr, read, demuxNextPacketReadState, &completeLength);
             if(demuxNextPacketReadState->demuxNextPacketReadBytes > 0) {
                 return;
             }
@@ -265,7 +265,9 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
              completeLength += sizeof(PsePacketHeaderPrefix) + header->pesHeaderDataLength;
 
              size_t read = completeLength + pesBodyLength <= payloadLength ? pesBodyLength : payloadLength - completeLength;
-             FetchData(&processPtr, pesBodyLength, read, demuxNextPacketReadState, &completeLength);
+             demuxNextPacketReadState->demuxNextPacketReadMode = DemuxNextPacketReadMode::ReadAudio;
+             demuxNextPacketReadState->demuxNextPacketReadBytes = pesBodyLength;
+             FetchData(&processPtr, read, demuxNextPacketReadState, &completeLength);
              if(demuxNextPacketReadState->demuxNextPacketReadBytes > 0) {
                  return;
              }
@@ -274,12 +276,10 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
 }
 
 void PsRtpPacketProcessor::FetchData(uint8_t** pesBody,
-                                     size_t pesBodyLength,
                                      size_t read,
                                      DemuxNextPacketReadState* demuxNextPacketReadState,
                                      size_t* completeLength)
 {
-    assert(pesBodyLength >= read);
     assert(demuxNextPacketReadState->demuxNextPacketReadMode != DemuxNextPacketReadMode::Guest);
 
     if(read > 0) {
@@ -293,13 +293,10 @@ void PsRtpPacketProcessor::FetchData(uint8_t** pesBody,
 
         *pesBody += read;
         *completeLength += read;
-        if(read != pesBodyLength) {
-            // 读完本包还不够
-            demuxNextPacketReadState->demuxNextPacketReadBytes = pesBodyLength - read;
-            return;
-        } else {
+        demuxNextPacketReadState->demuxNextPacketReadBytes -= read;
+        if(demuxNextPacketReadState->demuxNextPacketReadBytes == 0) {
             demuxNextPacketReadState->demuxNextPacketReadMode = DemuxNextPacketReadMode::Guest;
-            demuxNextPacketReadState->demuxNextPacketReadBytes = 0;
+            return;
         }
     } else if(read == 0) {
         // 本包没有数据

@@ -15,6 +15,7 @@ PsRtpPacketBuffer::Packet::Packet(const RtpPacket* rtp_packet)
     : is_last_packet_in_frame(rtp_packet->HasMarker()),
       seq_num(rtp_packet->GetSequenceNumber()),
       timestamp(rtp_packet->GetTimestamp()),
+      ssrc(rtp_packet->GetSsrc()),
       rtp_packet(rtp_packet)
 {
     auto* payload = rtp_packet->GetPayload();
@@ -160,7 +161,8 @@ int64_t PsRtpPacketBuffer::LastReceivedKeyframePacketMs() const {
 }
 void PsRtpPacketBuffer::ClearInternal() {
   for (auto& entry : buffer_) {
-    entry = nullptr;
+      delete entry->rtp_packet;
+      entry = nullptr;
   }
 
   first_packet_received_ = false;

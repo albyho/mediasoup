@@ -62,7 +62,6 @@ private:
     void Demux(const std::vector<std::unique_ptr<PsRtpPacketBuffer::Packet>>& packets);
     void Demux(const RtpPacket* rtp_packet, DemuxNextPacketReadState* demuxNextPacketReadState);
     void FetchData(uint8_t** pesBody,
-                   size_t pesBodyLength,
                    size_t read,
                    DemuxNextPacketReadState* demuxNextPacketReadState,
                    size_t* completeLength);

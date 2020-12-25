@@ -133,6 +133,8 @@ namespace RTC
 
 			throw;
 		}
+        
+        this->psRtpPacketProcessor = new PsRtpPacketProcessor();
 	}
 
 	PlainTransport::~PlainTransport()

@@ -32,7 +32,8 @@ public:
         bool marker_bit = false;
         uint16_t seq_num = 0;
         uint32_t timestamp = 0;
-         
+        uint32_t ssrc = 0;
+
         const RtpPacket* rtp_packet;
     };
     struct InsertResult {
