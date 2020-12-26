@@ -6,7 +6,8 @@
 
 namespace RTC {
 
-constexpr size_t kMaxRtpPacketPayload = 1400;
+constexpr size_t kMaxRtpPacketPayload = 1360;
+constexpr size_t KRtpPacketExpandSize = 40;
 constexpr size_t kRtpPacketHeaderSize = 12;
 constexpr size_t kH264FUHeaderSize = 2;
 constexpr size_t kH264STAPAHeaderSize = 1;
@@ -91,7 +92,7 @@ RtpPacket* RtpPacketPacker::H264PackNALU(const std::shared_ptr<BlockBuffer>& nal
 
     size_t bufferLength = kRtpPacketHeaderSize/*sizeof(RtpPacket::Header)*/ + nalu->len;
     assert(bufferLength <= kMaxRtpPacketPayload);
-    auto* buffer = new uint8_t[bufferLength];
+    auto* buffer = new uint8_t[bufferLength + KRtpPacketExpandSize];
     auto* header = reinterpret_cast<RtpPacket::Header*>(buffer);
     H264RtpHeaderInit(header);
     header->marker = 0;
@@ -115,7 +116,7 @@ RtpPacket* RtpPacketPacker::H264PackSTAPA(const std::vector<std::shared_ptr<Bloc
         bufferLength += sizeof(uint16_t) + (*iter)->len;
     }
     assert(bufferLength <= kMaxRtpPacketPayload);
-    auto* buffer = new uint8_t[bufferLength];
+    auto* buffer = new uint8_t[bufferLength + KRtpPacketExpandSize];
     auto* header = reinterpret_cast<RtpPacket::Header*>(buffer);
     H264RtpHeaderInit(header);
     header->marker = 0;
@@ -177,7 +178,7 @@ std::vector<RtpPacket *> RtpPacketPacker::H264PackFUA(const std::shared_ptr<Bloc
 
         size_t bufferLength = kRtpPacketHeaderSize + kH264FUHeaderSize + payloadLength;
         assert(bufferLength <= kMaxRtpPacketPayload);
-        auto* buffer = new uint8_t[bufferLength];
+        auto* buffer = new uint8_t[bufferLength + KRtpPacketExpandSize];
         auto* header = reinterpret_cast<RtpPacket::Header*>(buffer);
         H264RtpHeaderInit(header);
         header->marker = 0;
@@ -361,7 +362,7 @@ void RtpPacketPacker::G711ARtpHeaderInit(RtpPacket::Header* header)
 
 RtpPacket* RtpPacketPacker::GeneratePaddingH264RtpPacket(uint16_t sequenceNumber, uint32_t timestamp, uint32_t ssrc)
 {
-    auto* buffer = new uint8_t[kRtpPacketHeaderSize];
+    auto* buffer = new uint8_t[kRtpPacketHeaderSize + KRtpPacketExpandSize];
     auto* header = reinterpret_cast<RtpPacket::Header*>(buffer);
     H264RtpHeaderInit(header);
     header->marker = 0;

@@ -46,6 +46,7 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
     auto& packets = insertResult.packets;
     if(!packets.empty()) {
         Demux(packets);
+        this->psRtpPacketBuffer->ClearTo(packets[packets.size() - 1]->seq_num);
         if(this->videoFrameBufferOffset == 0 && this->audioFrameBufferOffset == 0) {
             MS_WARN_TAG(rtp, "Too many empty packets.");
             return result;
@@ -59,10 +60,9 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
 //                     );
 //        auto newRtpPacketCount = packets[packets.size() - 1]->seq_num - packets[0]->seq_num;
         
-        this->psRtpPacketBuffer->ClearTo(packets[packets.size() - 1]->seq_num);
-        
         if(this->videoFrameBufferOffset > 0) {
             // delete 收到的、已经解析的 RtpPacket 及内部的 payload
+            // TODO: 调用ClearTo貌似没用？如果有用则不需要在此 delete
             for (auto iter = packets.cbegin(); iter != packets.cend(); iter++)
             {
                 delete[] (*iter)->rtp_packet->GetData();

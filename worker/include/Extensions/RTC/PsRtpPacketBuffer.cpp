@@ -124,6 +124,9 @@ void PsRtpPacketBuffer::ClearTo(uint16_t seq_num) {
   for (size_t i = 0; i < iterations; ++i) {
     auto& stored = buffer_[first_seq_num_ % buffer_.size()];
     if (stored != nullptr && AheadOf<uint16_t>(seq_num, stored->seq_num)) {
+      delete[] stored->rtp_packet->GetData();
+      delete stored->rtp_packet;
+      stored->rtp_packet = nullptr;
       stored = nullptr;
     }
     ++first_seq_num_;
@@ -161,9 +164,12 @@ int64_t PsRtpPacketBuffer::LastReceivedKeyframePacketMs() const {
 }
 void PsRtpPacketBuffer::ClearInternal() {
   for (auto& entry : buffer_) {
-      delete[] entry->rtp_packet->GetData();
-      delete entry->rtp_packet;
-      entry = nullptr;
+      if(entry) {
+          delete[] entry->rtp_packet->GetData();
+          delete entry->rtp_packet;
+          entry->rtp_packet = nullptr;
+          entry = nullptr;
+      }
   }
 
   first_packet_received_ = false;

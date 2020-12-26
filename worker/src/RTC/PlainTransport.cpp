@@ -858,8 +858,8 @@ namespace RTC
             for (auto iter = packets.cbegin(); iter != packets.cend(); iter++)
             {
                 datas.push_back((*iter)->GetData());
-                //RTC::Transport::ReceiveRtpPacket(*iter);
-                delete *iter;
+                RTC::Transport::ReceiveRtpPacket(*iter);
+                //delete *iter;
             }
             for (auto iter = datas.cbegin(); iter != datas.cend(); iter++) {
                 delete[] *iter;
