@@ -72,6 +72,10 @@ private:
     uint8_t* audioFrameBuffer;
     size_t videoFrameBufferOffset;
     size_t audioFrameBufferOffset;
+    uint8_t videoStreamType;
+    uint8_t audioStreamType;
+    uint8_t videoElementaryStreamId;
+    uint8_t audioElementaryStreamId;
 };
 
 } // namespace RTC

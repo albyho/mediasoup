@@ -62,8 +62,10 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
         this->psRtpPacketBuffer->ClearTo(packets[packets.size() - 1]->seq_num);
         
         if(this->videoFrameBufferOffset > 0) {
+            // delete 收到的、已经解析的 RtpPacket 及内部的 payload
             for (auto iter = packets.cbegin(); iter != packets.cend(); iter++)
             {
+                delete[] (*iter)->rtp_packet->GetData();
                 delete (*iter)->rtp_packet;
             }
             
@@ -76,7 +78,7 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
             
             for (auto iter = newVideoPackets.cbegin(); iter != newVideoPackets.cend(); iter++)
             {
-                //result.push_back(*iter);
+                result.push_back(*iter);
             }
         }
     }
@@ -125,10 +127,6 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
         }
     }
     
-    uint8_t videoStreamType = 0;
-    uint8_t audioStreamType = 0;
-    uint8_t videoElementaryStreamId = 0;
-    uint8_t audioElementaryStreamId = 0;
     while (processPtr < payload + payloadLength - sizeof(PsPacketStartCode)) {
         if (processPtr[0] == 0x00
             && processPtr[1] == 0x00
@@ -166,12 +164,12 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
             header->programStreamMapLength = ntohs(header->programStreamMapLength);
             
             processPtr += sizeof(PsPSMHeaderPrefix);
-            auto* psm = processPtr + sizeof(PsPSMHeaderPrefix);
-            processPtr += header->programStreamMapLength; // programStreamMapLength 包含自身
-            completeLength += sizeof(PsPSMHeaderPrefix) + header->programStreamMapLength;
+            completeLength += sizeof(PsPSMHeaderPrefix);
 
+            auto* psm = processPtr;
+            
             // Parse PSM
-            psm += 2;
+            psm += 2; // Skip 2 bytes
             uint16_t programStreamInfoLength = ntohs(*reinterpret_cast<uint16_t*>(psm));
             psm += sizeof(programStreamInfoLength);
             psm += programStreamInfoLength;
@@ -187,32 +185,34 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
                 uint16_t elementaryStreamInfoLength = ntohs(*reinterpret_cast<uint16_t*>(psm));
                 psm += sizeof(elementaryStreamInfoLength);
                 psm += elementaryStreamInfoLength;
-                elementaryStreamMapLength -= 4 + elementaryStreamInfoLength;
+                elementaryStreamMapLength -= sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint16_t) + elementaryStreamInfoLength;
                 
                 /* remember mapping from stream id to stream type */
                 if (elementaryStreamId >= PS_AUDIO_ID && elementaryStreamId <= PS_AUDIO_ID_END)
                 {
-                    if (audioStreamType != streamType)
+                    if (this->audioStreamType != streamType || this->audioElementaryStreamId != elementaryStreamId)
                     {
                         MS_DEBUG_TAG(rtp, "PS map audio streamType=%s(%02x), elementaryStreamId=%02x, elementaryStreamInfoLength=%d",
                                      GetPSMapTypeString(streamType).c_str(), streamType, elementaryStreamId, elementaryStreamInfoLength);
+                        
+                        this->audioStreamType = streamType;
+                        this->audioElementaryStreamId = elementaryStreamId;
                     }
-                    
-                    audioStreamType = streamType;
-                    audioElementaryStreamId = elementaryStreamId;
                 }
                 else if (elementaryStreamId >= PS_VIDEO_ID && elementaryStreamId <= PS_VIDEO_ID_END)
                 {
-                    if (videoStreamType != streamType)
+                    if (this->videoStreamType != streamType || this->videoElementaryStreamId != elementaryStreamId)
                     {
                         MS_DEBUG_TAG(rtp, "PS map video streamType=%s(%02x), elementaryStreamId=%02x, elementaryStreamInfoLength=%d",
                                      GetPSMapTypeString(streamType).c_str(), streamType, elementaryStreamId, elementaryStreamInfoLength);
+                        this->videoStreamType = streamType;
+                        this->videoElementaryStreamId = elementaryStreamId;
                     }
-
-                    videoStreamType = streamType;
-                    videoElementaryStreamId = elementaryStreamId;
                 }
             }
+            
+            processPtr += header->programStreamMapLength; // programStreamMapLength 不包含自身
+            completeLength += header->programStreamMapLength;
         }
         else if(processPtr[0] == 0x00
                 && processPtr[1] == 0x00
@@ -223,7 +223,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
             PsePacketHeaderPrefix* header = reinterpret_cast<PsePacketHeaderPrefix*>(processPtr);
             header->pesPacketLength = ntohs(header->pesPacketLength);
 
-            size_t pesPayloadLength = header->pesPacketLength - ((sizeof(header->info) + sizeof(header->pesHeaderDataLength) + header->pesHeaderDataLength));
+            size_t pesPayloadLength = header->pesPacketLength - (sizeof(header->info) + sizeof(header->pesHeaderDataLength) + header->pesHeaderDataLength);
             processPtr += sizeof(PsePacketHeaderPrefix) + header->pesHeaderDataLength + pesPayloadLength;
             completeLength += sizeof(PsePacketHeaderPrefix) + header->pesHeaderDataLength + pesPayloadLength;
             
@@ -247,6 +247,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
             demuxNextPacketReadState->demuxNextPacketReadBytes = pesBodyLength;
             FetchData(&processPtr, read, demuxNextPacketReadState, &completeLength);
             if(demuxNextPacketReadState->demuxNextPacketReadBytes > 0) {
+                assert(processPtr == payload + payloadLength);
                 return;
             }
         } else if(processPtr
@@ -269,8 +270,12 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
              demuxNextPacketReadState->demuxNextPacketReadBytes = pesBodyLength;
              FetchData(&processPtr, read, demuxNextPacketReadState, &completeLength);
              if(demuxNextPacketReadState->demuxNextPacketReadBytes > 0) {
+                 assert(processPtr == payload + payloadLength);
                  return;
              }
+         } else {
+             MS_WARN_TAG(rtp, "Unknow PS data.");
+             return;
          }
     }
 }

@@ -87,7 +87,8 @@ RtpPacket* RtpPacketPacker::H264PackNALU(const std::shared_ptr<BlockBuffer>& nal
 {
     // data 不包含 0x00000001
     assert(0 < (*nalu->base & 0x1F) && (*nalu->base & 0x1F) < 24);
-    
+    assert(nalu->len > 0);
+
     size_t bufferLength = kRtpPacketHeaderSize/*sizeof(RtpPacket::Header)*/ + nalu->len;
     assert(bufferLength <= kMaxRtpPacketPayload);
     auto* buffer = new uint8_t[bufferLength];
@@ -106,6 +107,7 @@ RtpPacket* RtpPacketPacker::H264PackNALU(const std::shared_ptr<BlockBuffer>& nal
 RtpPacket* RtpPacketPacker::H264PackSTAPA(const std::vector<std::shared_ptr<BlockBuffer>>& nalus, uint32_t timestamp, uint32_t ssrc)
 {
     // data 不包含 0x00000001
+    assert(nalus.size() > 0);
     size_t bufferLength = kRtpPacketHeaderSize + kH264STAPAHeaderSize;
     for (auto iter = nalus.cbegin(); iter != nalus.cend(); iter++)
     {
@@ -127,9 +129,9 @@ RtpPacket* RtpPacketPacker::H264PackSTAPA(const std::vector<std::shared_ptr<Bloc
     for (auto iter = nalus.cbegin(); iter != nalus.cend(); iter++)
     {
         // NALU Size(Big endian)
-        uint8_t* p = (uint8_t*)(*iter)->len;
-        buffer[payloadOffset + 0] = p[0];
-        buffer[payloadOffset + 1] = p[1];
+        uint8_t* p = (uint8_t*)&(*iter)->len;
+        buffer[payloadOffset + 0] = p[1];
+        buffer[payloadOffset + 1] = p[0];
         payloadOffset += 2;
         std::memcpy(buffer + payloadOffset, (*iter)->base, (*iter)->len);
         payloadOffset += (*iter)->len;
@@ -204,13 +206,13 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
 {
     // data 包含 0x00000001，且至有 5 个字节。
     assert(length > 4);
-    std::vector<RtpPacket *> result;
+    std::vector<RtpPacket*> result;
 
     const std::vector<std::shared_ptr<BlockBuffer>> nalus = H264FindNALUs(data, length);
     if(nalus.size() == 0) return result;
     
     size_t freeSize = 0; // 尚未处理的单元的长度。
-    ssize_t naluCount = 0; // 尚未处理的单元的数量
+    size_t naluCount = 0; // 尚未处理的单元的数量
     for(size_t i = 0; i < nalus.size(); i++) {
         freeSize += nalus[i]->len;
         naluCount++;
@@ -258,7 +260,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
                 // Aggreation packet.
                 // STAP-A
                 std::vector<std::shared_ptr<BlockBuffer>> aggreationNALUs;
-                for (size_t j = i - naluCount; j <= i/*包含本包*/; j++) {
+                for (size_t j = i - (naluCount - 1); j <= i/*包含本包*/; j++) {
                     aggreationNALUs.push_back(nalus[j]);
                 }
                 auto* packet = H264PackSTAPA(aggreationNALUs, timestamp, ssrc);
@@ -283,7 +285,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
                     // Aggreation packet.
                     // STAP-A
                     std::vector<std::shared_ptr<BlockBuffer>> aggreationNALUs;
-                    for (size_t j = i - naluCount; j < i/*不包含本包*/; j++) {
+                    for (size_t j = i - (naluCount - 1); j < i/*不包含本包*/; j++) {
                         aggreationNALUs.push_back(nalus[j]);
                     }
                     auto* packet = H264PackSTAPA(aggreationNALUs, timestamp, ssrc);
@@ -307,6 +309,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
             MS_WARN_TAG(rtp, "Too many new packets.");
             for (auto iter = result.cbegin(); iter != result.cend(); iter++)
             {
+                delete[] (*iter)->GetData();
                 delete *iter;
             }
             std::vector<RtpPacket *> emptyResult;

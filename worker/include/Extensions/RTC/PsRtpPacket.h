@@ -54,7 +54,7 @@ struct PsPSMHeaderPrefix
     PsPacketStartCode startCode;                // 4 bytes: '0x000001BC'
 
     // 4
-    uint16_t programStreamMapLength;            // Note: Big Endian, include `programStreamMapLength` self.
+    uint16_t programStreamMapLength;            // Note: Big Endian, exclude `programStreamMapLength` self.
 }; // 6 + programStreamInfoLength:2bytes + (N * x) + (elementaryStreamMapLength:2bytes) + (N1 * x1) + (CRC_32:4bytes)
 
 /* Struct for PES packet header prefix (P.31: Table 2-17 - PES packet) */

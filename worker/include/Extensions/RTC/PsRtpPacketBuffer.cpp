@@ -161,6 +161,7 @@ int64_t PsRtpPacketBuffer::LastReceivedKeyframePacketMs() const {
 }
 void PsRtpPacketBuffer::ClearInternal() {
   for (auto& entry : buffer_) {
+      delete[] entry->rtp_packet->GetData();
       delete entry->rtp_packet;
       entry = nullptr;
   }

@@ -853,9 +853,16 @@ namespace RTC
             delete packet;
             std::vector<RtpPacket*> packets = this->psRtpPacketProcessor->InsertRtpPacket(clonePacket);
             
+            // datas 保存 RtpPacket 中的 data，以用于后续 delete。
+            std::vector<const uint8_t*> datas;
             for (auto iter = packets.cbegin(); iter != packets.cend(); iter++)
             {
-                RTC::Transport::ReceiveRtpPacket(*iter);
+                datas.push_back((*iter)->GetData());
+                //RTC::Transport::ReceiveRtpPacket(*iter);
+                delete *iter;
+            }
+            for (auto iter = datas.cbegin(); iter != datas.cend(); iter++) {
+                delete[] *iter;
             }
         } else {
             // Pass the packet to the parent transport.
