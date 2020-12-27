@@ -35,6 +35,11 @@ PsRtpPacketProcessor::~PsRtpPacketProcessor()
     this->audioFrameBuffer = nullptr;
 }
 
+void PsRtpPacketProcessor::ClearRtpPackets()
+{
+    this->psRtpPacketBuffer->Clear();
+}
+
 std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* rtp_packet)
 {
     std::vector<RtpPacket*> result;

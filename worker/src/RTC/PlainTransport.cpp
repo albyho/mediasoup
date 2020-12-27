@@ -842,9 +842,14 @@ namespace RTC
 		{
             if(packet->GetPayloadType() == PS_Payload_Type)
             {
-                // TODO: 摄像头断开后使用新的端口发送。这里似乎没生效？还需要如何操作？
                 delete this->tuple;
                 this->tuple = new RTC::TransportTuple(tuple);
+                
+                if (!this->listenIp.announcedIp.empty())
+                    this->tuple->SetLocalAnnouncedIp(this->listenIp.announcedIp);
+                
+                // 清理 RtpPacket
+                this->psRtpPacketProcessor->ClearRtpPackets();
             }
             else
             {

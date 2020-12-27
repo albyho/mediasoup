@@ -45,6 +45,7 @@ public:
     ~PsRtpPacketProcessor();
     
 public:
+    void ClearRtpPackets();
     std::vector<RtpPacket*> InsertRtpPacket(const RtpPacket* rtp_packet);
     static std::string GetPSMapTypeString(uint8_t type);
 
