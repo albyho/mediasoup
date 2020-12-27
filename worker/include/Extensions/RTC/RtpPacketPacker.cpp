@@ -2,6 +2,8 @@
 
 #include "RtpPacketPacker.hpp"
 #include "Logger.hpp"
+#include "Extensions/Utils/SequenceNumberUtils.h"
+#include <limits.h>
 #include <assert.h>
 
 namespace RTC {
@@ -209,7 +211,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
     assert(length > 4);
     std::vector<RtpPacket*> result;
 
-    const std::vector<std::shared_ptr<BlockBuffer>> nalus = H264FindNALUs(data, length);
+    const auto nalus = H264FindNALUs(data, length);
     if(nalus.size() == 0) return result;
     
     size_t freeSize = 0; // 尚未处理的单元的长度。
@@ -303,7 +305,8 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
     
     if(!result.empty())
     {
-        size_t packetCount = (endSequenceNumber - startSequenceNumber + 1);
+        size_t packetCount = ForwardDiff<uint16_t>(startSequenceNumber, endSequenceNumber) + 1;
+        assert(packetCount < USHRT_MAX);
         // 如果 result.size() 大于 packetCount 说明序列号会发生了超标。
         if(result.size() > packetCount)
         {
@@ -313,20 +316,22 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
                 delete[] (*iter)->GetData();
                 delete *iter;
             }
-            std::vector<RtpPacket *> emptyResult;
-            return emptyResult;
+            result.clear();
+            return result;
         }
         // 设置所有包的 sequenceNumber 以及最后一包的 marker。如有必要，创建空包以保证新生成的包的数量。
-        size_t index = 0;
-        for(uint16_t i = startSequenceNumber; i <= endSequenceNumber; i++)
-        {
-            if(index < result.size()) {
-                result[index]->SetSequenceNumber(i);
-            } else {
-                auto* paddingRtpPacket = GeneratePaddingH264RtpPacket(i, timestamp, ssrc);
-                result.push_back(paddingRtpPacket);
+        size_t emptyPacketCount = packetCount - result.size();
+        for (uint16_t i = 0; i < packetCount; i++) {
+            uint16_t currentSequenceNumber = startSequenceNumber + i;
+            if(i < emptyPacketCount)
+            {
+                auto* paddingRtpPacket = GeneratePaddingH264RtpPacket(currentSequenceNumber, timestamp, ssrc);
+                result.insert(result.cbegin() + i, paddingRtpPacket);
             }
-            index++;
+            else
+            {
+                result[i]->SetSequenceNumber(currentSequenceNumber);
+            }
         }
         result[result.size() - 1]->SetMarker(true);
     }

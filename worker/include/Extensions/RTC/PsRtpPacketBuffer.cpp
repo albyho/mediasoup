@@ -69,7 +69,9 @@ PsRtpPacketBuffer::InsertResult PsRtpPacketBuffer::InsertPacket(
   if (buffer_[index] != nullptr) {
     // Duplicate packet, just delete the payload.
     if (buffer_[index]->seq_num == packet->seq_num) {
-      return result;
+        delete packet->rtp_packet->GetData();
+        delete packet->rtp_packet;
+        return result;
     }
 
     // The packet buffer is full, try to expand the buffer.
@@ -300,3 +302,4 @@ void PsRtpPacketBuffer::UpdateMissingPackets(uint16_t seq_num) {
 }
 
 } // namespace RTC
+

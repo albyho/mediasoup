@@ -57,6 +57,18 @@ struct PsPSMHeaderPrefix
     uint16_t programStreamMapLength;            // Note: Big Endian, exclude `programStreamMapLength` self.
 }; // 6 + programStreamInfoLength:2bytes + (N * x) + (elementaryStreamMapLength:2bytes) + (N1 * x1) + (CRC_32:4bytes)
 
+struct PsPSMElementaryStreamMap
+{
+    // 0
+    uint8_t streamType; // 0x1B: H.264 0x90: G711 0x0F: aac
+    
+    // 1
+    uint8_t elementaryStreamId; // 0xE0: video 0xC0: audio
+    
+    // 2
+    uint16_t elementaryStreamInfoLength;
+}; // 4 + elementaryStreamInfoLength
+
 /* Struct for PES packet header prefix (P.31: Table 2-17 - PES packet) */
 struct PsePacketHeaderPrefix
 {

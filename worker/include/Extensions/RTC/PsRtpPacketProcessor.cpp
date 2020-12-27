@@ -170,43 +170,49 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
             
             // Parse PSM
             psm += 2; // Skip 2 bytes
+            
+            // program_stream_info (Skip)
             uint16_t programStreamInfoLength = ntohs(*reinterpret_cast<uint16_t*>(psm));
             psm += sizeof(programStreamInfoLength);
             psm += programStreamInfoLength;
+            
+            // elementary_stream_map
             uint16_t elementaryStreamMapLength = ntohs(*reinterpret_cast<uint16_t*>(psm));
             psm += sizeof(elementaryStreamMapLength);
-
             // /* at least one es available? */
             while (elementaryStreamMapLength >= 4) {
-                uint8_t streamType = *reinterpret_cast<uint8_t*>(psm); // 0x1B: H.264 0x90: G711 0x0F: aac
-                psm++;
-                uint8_t elementaryStreamId = *reinterpret_cast<uint8_t*>(psm); // 0xE0: video 0xC0: audio
-                psm++;
-                uint16_t elementaryStreamInfoLength = ntohs(*reinterpret_cast<uint16_t*>(psm));
-                psm += sizeof(elementaryStreamInfoLength);
-                psm += elementaryStreamInfoLength;
-                elementaryStreamMapLength -= sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint16_t) + elementaryStreamInfoLength;
+                PsPSMElementaryStreamMap* elementaryStreamMap = reinterpret_cast<PsPSMElementaryStreamMap*>(psm);
+                elementaryStreamMap->elementaryStreamInfoLength = ntohs(elementaryStreamMap->elementaryStreamInfoLength);
+                psm += sizeof(PsPSMElementaryStreamMap);
+                psm += elementaryStreamMap->elementaryStreamInfoLength;
+                elementaryStreamMapLength -= sizeof(PsPSMElementaryStreamMap) + elementaryStreamMap->elementaryStreamInfoLength;
                 
                 /* remember mapping from stream id to stream type */
-                if (elementaryStreamId >= PS_AUDIO_ID && elementaryStreamId <= PS_AUDIO_ID_END)
+                if (elementaryStreamMap->elementaryStreamId >= PS_AUDIO_ID && elementaryStreamMap->elementaryStreamId <= PS_AUDIO_ID_END)
                 {
-                    if (this->audioStreamType != streamType || this->audioElementaryStreamId != elementaryStreamId)
+                    if (this->audioStreamType != elementaryStreamMap->streamType || this->audioElementaryStreamId != elementaryStreamMap->elementaryStreamId)
                     {
                         MS_DEBUG_TAG(rtp, "PS map audio streamType=%s(%02x), elementaryStreamId=%02x, elementaryStreamInfoLength=%d",
-                                     GetPSMapTypeString(streamType).c_str(), streamType, elementaryStreamId, elementaryStreamInfoLength);
+                                     GetPSMapTypeString(elementaryStreamMap->streamType).c_str(),
+                                     elementaryStreamMap->streamType,
+                                     elementaryStreamMap->elementaryStreamId,
+                                     elementaryStreamMap->elementaryStreamInfoLength);
                         
-                        this->audioStreamType = streamType;
-                        this->audioElementaryStreamId = elementaryStreamId;
+                        this->audioStreamType = elementaryStreamMap->streamType;
+                        this->audioElementaryStreamId = elementaryStreamMap->elementaryStreamId;
                     }
                 }
-                else if (elementaryStreamId >= PS_VIDEO_ID && elementaryStreamId <= PS_VIDEO_ID_END)
+                else if (elementaryStreamMap->elementaryStreamId >= PS_VIDEO_ID && elementaryStreamMap->elementaryStreamId <= PS_VIDEO_ID_END)
                 {
-                    if (this->videoStreamType != streamType || this->videoElementaryStreamId != elementaryStreamId)
+                    if (this->videoStreamType != elementaryStreamMap->streamType || this->videoElementaryStreamId != elementaryStreamMap->elementaryStreamId)
                     {
                         MS_DEBUG_TAG(rtp, "PS map video streamType=%s(%02x), elementaryStreamId=%02x, elementaryStreamInfoLength=%d",
-                                     GetPSMapTypeString(streamType).c_str(), streamType, elementaryStreamId, elementaryStreamInfoLength);
-                        this->videoStreamType = streamType;
-                        this->videoElementaryStreamId = elementaryStreamId;
+                                     GetPSMapTypeString(elementaryStreamMap->streamType).c_str(),
+                                     elementaryStreamMap->streamType,
+                                     elementaryStreamMap->elementaryStreamId,
+                                     elementaryStreamMap->elementaryStreamInfoLength);
+                        this->videoStreamType = elementaryStreamMap->streamType;
+                        this->videoElementaryStreamId = elementaryStreamMap->elementaryStreamId;
                     }
                 }
             }

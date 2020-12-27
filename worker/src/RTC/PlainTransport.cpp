@@ -851,7 +851,7 @@ namespace RTC
         if(packet->GetPayloadType() == PS_Payload_Type) {
             auto* clonePacket = packet->Clone(new uint8_t[RTC::MtuSize]);
             delete packet;
-            std::vector<RtpPacket*> packets = this->psRtpPacketProcessor->InsertRtpPacket(clonePacket);
+            auto packets = this->psRtpPacketProcessor->InsertRtpPacket(clonePacket);
             
             // datas 保存 RtpPacket 中的 data，以用于后续 delete。
             std::vector<const uint8_t*> datas;
