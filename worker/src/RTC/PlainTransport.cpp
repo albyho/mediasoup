@@ -837,32 +837,42 @@ namespace RTC
 		// of the packet.
 		else if (!this->tuple->Compare(tuple))
 		{
-			MS_DEBUG_TAG(rtp, "ignoring RTP packet from unknown IP:port");
+            if(packet->GetPayloadType() == PS_Payload_Type)
+            {
+                // TODO: 摄像头断开后使用新的端口发送。这里似乎没生效？还需要如何操作？
+                delete this->tuple;
+                this->tuple = new RTC::TransportTuple(tuple);
+            }
+            else
+            {
+                MS_DEBUG_TAG(rtp, "ignoring RTP packet from unknown IP:port");
 
-			// Remove this SSRC.
-			RecvStreamClosed(packet->GetSsrc());
+                // Remove this SSRC.
+                RecvStreamClosed(packet->GetSsrc());
 
-			delete packet;
+                delete packet;
 
-			return;
-		}
+                return;
+            }
+        }
 
         //*
-        if(packet->GetPayloadType() == PS_Payload_Type) {
+        if(packet->GetPayloadType() == PS_Payload_Type)
+        {
             auto* clonePacket = packet->Clone(new uint8_t[RTC::MtuSize]);
             delete packet;
             auto packets = this->psRtpPacketProcessor->InsertRtpPacket(clonePacket);
             
             // datas 保存 RtpPacket 中的 data，以用于后续 delete。
             std::vector<const uint8_t*> datas;
-            for (auto iter = packets.cbegin(); iter != packets.cend(); iter++)
+            for (auto entry : packets)
             {
-                datas.push_back((*iter)->GetData());
-                RTC::Transport::ReceiveRtpPacket(*iter);
-                //delete *iter;
+                datas.push_back(entry->GetData());
+                RTC::Transport::ReceiveRtpPacket(entry);
             }
-            for (auto iter = datas.cbegin(); iter != datas.cend(); iter++) {
-                delete[] *iter;
+            for (auto entry : datas)
+            {
+                delete[] entry;
             }
         } else {
             // Pass the packet to the parent transport.
