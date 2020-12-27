@@ -64,14 +64,18 @@ PsRtpPacketBuffer::InsertResult PsRtpPacketBuffer::InsertPacket(
     }
     else if (AheadOf(first_seq_num_, seq_num))
     {
-    // If we have explicitly cleared past this packet then it's old,
-    // don't insert it, just silently ignore it.
-    if (is_cleared_to_first_seq_num_)
-    {
-        return result;
-    }
+        // If we have explicitly cleared past this packet then it's old,
+        // don't insert it, just silently ignore it.
+        if (is_cleared_to_first_seq_num_)
+        {
+            delete packet->rtp_packet->GetData();
+            delete packet->rtp_packet;
+            packet->rtp_packet = nullptr;
+            packet = nullptr;
+            return result;
+        }
 
-    first_seq_num_ = seq_num;
+        first_seq_num_ = seq_num;
     }
 
     if (buffer_[index] != nullptr)
@@ -81,6 +85,8 @@ PsRtpPacketBuffer::InsertResult PsRtpPacketBuffer::InsertPacket(
         {
             delete packet->rtp_packet->GetData();
             delete packet->rtp_packet;
+            packet->rtp_packet = nullptr;
+            packet = nullptr;
             return result;
         }
 

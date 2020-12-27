@@ -70,16 +70,6 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
         
         if(this->videoFrameBufferOffset > 0)
         {
-            // delete 收到的、已经解析的 RtpPacket 及内部的 payload
-            // TODO: 调用ClearTo貌似没用？如果有用则不需要在此 delete
-            for (auto& entry : packets)
-            {
-                delete[] entry->rtp_packet->GetData();
-                delete entry->rtp_packet;
-                entry->rtp_packet = nullptr;
-                entry = nullptr;
-            }
-            
             std::vector<RtpPacket*> newVideoPackets = RtpPacketPacker::H264Pack(this->videoFrameBuffer,
                                                              this->videoFrameBufferOffset,
                                                              packets[0]->seq_num,
@@ -90,6 +80,16 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
             for (auto& entry : newVideoPackets)
             {
                 result.push_back(entry);
+            }
+            
+            // delete 收到的、已经解析的 RtpPacket 及内部的 payload
+            // TODO: 调用ClearTo貌似没用？如果有用则不需要在此 delete
+            for (auto& entry : packets)
+            {
+                delete[] entry->rtp_packet->GetData();
+                delete entry->rtp_packet;
+                entry->rtp_packet = nullptr;
+                entry = nullptr;
             }
         }
     }
