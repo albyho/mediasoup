@@ -53,6 +53,7 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
     if(!packets.empty())
     {
         Demux(packets);
+        // ClearTo 用于清理旧包，比如在上一帧处理后收到的重复包。
         this->psRtpPacketBuffer->ClearTo(packets[packets.size() - 1]->seq_num);
         if(this->videoFrameBufferOffset == 0 && this->audioFrameBufferOffset == 0)
         {
@@ -83,7 +84,6 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
             }
             
             // delete 收到的、已经解析的 RtpPacket 及内部的 payload
-            // TODO: 调用ClearTo貌似没用？如果有用则不需要在此 delete
             for (auto& entry : packets)
             {
                 delete[] entry->rtp_packet->GetData();
