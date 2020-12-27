@@ -226,7 +226,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
         
         if(naluCount == 1)
         {
-            // 刚好够单包，或者不够却是最后一包
+            // 刚好够单包，或者不够却是最后一包。
             if(
                (kRtpPacketHeaderSize + freeSize == kMaxRtpPacketPayload) ||
                (kRtpPacketHeaderSize + freeSize < kMaxRtpPacketPayload && i == (nalus.size() - 1))
@@ -258,7 +258,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
         }
         else
         {
-            // 刚好够单包，或者不够却是最后一包
+            // 刚好够单包，或者不够本包却是最后一包。
             if (
                 (kRtpPacketHeaderSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) == kMaxRtpPacketPayload) ||
                 ((kRtpPacketHeaderSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) < kMaxRtpPacketPayload) && (i == nalus.size() - 1))
@@ -277,19 +277,19 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
                 freeSize = 0;
                 naluCount = 0;
             }
-            // 包已超标（如果是当前包是最后一包会有特殊处理）
+            // 本包将导致超标。先处理前面的包，再决定本包的处理方式。
             else if (kRtpPacketHeaderSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) > kMaxRtpPacketPayload)
             {
                 if(naluCount - 1 == 1)
                 {
-                    // 处理前面唯一的一包，本包暂不处理(前一包不会超标)
+                    // 处理前面唯一的一包，本包暂不处理(前一包不会超标)。
                     // Single NAL unit packet.
                     auto* packet = H264PackNALU(nalus[i - 1], timestamp, ssrc);
                     result.push_back(packet);
                 }
                 else
                 {
-                    // 处理前面的所有包，本包暂不处理
+                    // 处理前面的所有包，本包暂不处理(前面的包不会超标)。
                     // Aggreation packet.
                     // STAP-A
                     std::vector<std::shared_ptr<BlockBuffer>> aggreationNALUs;
@@ -328,6 +328,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
             return result;
         }
         // 设置所有包的 sequenceNumber 以及最后一包的 marker。如有必要，创建空包以保证新生成的包的数量。
+        // 注意不能放在最后一个，因为客户端收到空包不会去判断是不是 marker。
         size_t emptyPacketCount = packetCount - result.size();
         for (uint16_t i = 0; i < packetCount; i++)
         {
