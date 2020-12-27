@@ -9,7 +9,7 @@ namespace RTC
 
 /* Struct for PS Packet start code prefix. */
 struct PsPacketStartCodePrefix {
-    uint8_t prefix[3];                      // 3 bytes: '0x000001'
+    uint8_t prefix[3];                          // 3 bytes: '0x000001'
 };
 
 /* Struct for PS Header start code. */
@@ -23,7 +23,7 @@ struct PsPacketStartCode
 struct PsHeader
 {
     // 0
-    PsPacketStartCode startCode;            // 4 bytes: '0x000001BA'
+    PsPacketStartCode startCode;                // 4 bytes: '0x000001BA'
 
     // 4
     uint8_t info[9];
@@ -58,16 +58,17 @@ struct PsPSMHeaderPrefix
     uint16_t programStreamMapLength;            // Note: Big Endian, exclude `programStreamMapLength` self.
 }; // 6 + programStreamInfoLength:2bytes + (N * x) + (elementaryStreamMapLength:2bytes) + (N1 * x1) + (CRC_32:4bytes)
 
+/* Struct for PEM elementary stream map (P.59: Table 2-17 - Program Stream map) */
 struct PsPSMElementaryStreamMap
 {
     // 0
-    uint8_t streamType; // 0x1B: H.264 0x90: G711 0x0F: aac
+    uint8_t streamType;                         // 0x1B: H.264 0x90: G711 0x0F: aac
     
     // 1
-    uint8_t elementaryStreamId; // 0xE0: video 0xC0: audio
+    uint8_t elementaryStreamId;                 // 0xE0: video 0xC0: audio
     
     // 2
-    uint16_t elementaryStreamInfoLength;
+    uint16_t elementaryStreamInfoLength;        // Note: Big Endian
 }; // 4 + elementaryStreamInfoLength
 
 /* Struct for PES packet header prefix (P.31: Table 2-17 - PES packet) */
@@ -77,13 +78,13 @@ struct PsePacketHeaderPrefix
     PsPacketStartCode startCode;                // 4 bytes: '0x000001E0' or '0x000001C0'
     
     // 4
-    uint16_t pesPacketLength; // exclude `startCode` and `pesPacketLength`.
+    uint16_t pesPacketLength;                   // exclude `startCode` and `pesPacketLength`.
     
     // 6
     uint8_t info[2];
     
     // 8
-    uint8_t pesHeaderDataLength;
+    uint8_t pesHeaderDataLength;                // Note: Big Endian
 }; // 9 + x
 
 #pragma pack(pop)
