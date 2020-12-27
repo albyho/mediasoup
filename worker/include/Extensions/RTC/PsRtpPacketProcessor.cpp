@@ -117,7 +117,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
     uint8_t* processPtr   = payload;
     size_t completeLength = 0;
 
-    if(payloadLength <= 0)
+    if(payloadLength == 0)
     {
         // Padding
         return;
