@@ -310,6 +310,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
     
     if(!result.empty())
     {
+        // 可直接传入数量而非结束序列号。这里这样做目的是为了方便验证。
         size_t packetCount = ForwardDiff<uint16_t>(startSequenceNumber, endSequenceNumber) + 1;
         assert(packetCount < USHRT_MAX);
         // 如果 result.size() 大于 packetCount 说明序列号会发生了超标。
@@ -320,6 +321,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
             {
                 delete[] entry->GetData();
                 delete entry;
+                entry = nullptr;
             }
 
             result.clear();

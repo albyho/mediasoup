@@ -26,8 +26,11 @@ PsRtpPacketProcessor::PsRtpPacketProcessor()
 PsRtpPacketProcessor::~PsRtpPacketProcessor()
 {
     delete this->psRtpPacketBuffer;
+    this->psRtpPacketBuffer = nullptr;
     delete[] this->videoFrameBuffer;
+    this->videoFrameBuffer = nullptr;
     delete[] this->audioFrameBuffer;
+    this->audioFrameBuffer = nullptr;
 }
 
 std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* rtp_packet)
@@ -73,6 +76,8 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
             {
                 delete[] entry->rtp_packet->GetData();
                 delete entry->rtp_packet;
+                entry->rtp_packet = nullptr;
+                entry = nullptr;
             }
             
             std::vector<RtpPacket*> newVideoPackets = RtpPacketPacker::H264Pack(this->videoFrameBuffer,
@@ -102,6 +107,7 @@ void PsRtpPacketProcessor::Demux(const std::vector<std::unique_ptr<PsRtpPacketBu
         Demux(entry->rtp_packet, demuxNextPacketReadState);
     }
     delete demuxNextPacketReadState;
+    demuxNextPacketReadState = nullptr;
 }
 
 void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketReadState* demuxNextPacketReadState)
