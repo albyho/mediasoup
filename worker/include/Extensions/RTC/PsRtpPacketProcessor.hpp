@@ -37,6 +37,7 @@
 
 namespace RTC
 {
+
 class PsRtpPacketProcessor
 {
 public:
@@ -49,7 +50,8 @@ public:
 
 private:
     enum DemuxNextPacketReadMode { Guest, ReadVideo, ReadAudio };
-    struct DemuxNextPacketReadState {
+    struct DemuxNextPacketReadState
+    {
         DemuxNextPacketReadMode demuxNextPacketReadMode;
         size_t demuxNextPacketReadBytes;
         DemuxNextPacketReadState(DemuxNextPacketReadMode demuxNextPacketReadMode, size_t demuxNextPacketReadBytes) :

@@ -3,9 +3,11 @@
 
 #include <cstdint>    // uint8_t, etc
 
-namespace RTC {
+namespace RTC
+{
 
-class Utilities {
+class Utilities
+{
     
 public:
     static bool IsLittleEndian();

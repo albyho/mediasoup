@@ -1,7 +1,8 @@
 #ifndef PsRtpPacket_h
 #define PsRtpPacket_h
 
-namespace RTC {
+namespace RTC
+{
 
 #pragma pack(push)
 #pragma pack(1)

@@ -1,7 +1,8 @@
 #include "Buffer.hpp"
 #include "Utilities.hpp"
 
-namespace RTC {
+namespace RTC
+{
 
 Buffer::Buffer(uint8_t* data, size_t numberOfBytes)
 {
@@ -91,10 +92,8 @@ uint16_t Buffer::ReadU16()
     
     uint16_t value;
     uint8_t* p = (uint8_t*)&value;
-    p[3] = *position++;
-    p[2] = *position++;
-    p[1] = *position++;
     p[0] = *position++;
+    p[1] = *position++;
     
     return value;
 }
@@ -110,10 +109,8 @@ uint16_t Buffer::ReadU16BE()
     
     uint16_t value;
     uint8_t* p = (uint8_t*)&value;
-    p[0] = *position++;
     p[1] = *position++;
-    p[2] = *position++;
-    p[3] = *position++;
+    p[0] = *position++;
     
     return value;
 }
@@ -129,10 +126,10 @@ uint32_t Buffer::ReadU32()
     
     uint32_t value;
     uint8_t* p = (uint8_t*)&value;
-    p[3] = *position++;
-    p[2] = *position++;
-    p[1] = *position++;
     p[0] = *position++;
+    p[1] = *position++;
+    p[2] = *position++;
+    p[3] = *position++;
     
     return value;
 }
@@ -148,10 +145,10 @@ uint32_t Buffer::ReadU32BE()
     
     uint32_t value;
     uint8_t* p = (uint8_t*)&value;
-    p[0] = *position++;
-    p[1] = *position++;
-    p[2] = *position++;
     p[3] = *position++;
+    p[2] = *position++;
+    p[1] = *position++;
+    p[0] = *position++;
     
     return value;
 }
@@ -176,8 +173,8 @@ void Buffer::Write2Bytes(uint16_t data)
     assert(Require(sizeof(uint16_t)));
 
     uint8_t* p = (uint8_t*)&data;
-    *position++ = p[1];
     *position++ = p[0];
+    *position++ = p[1];
 }
 
 void Buffer::Write2BytesBE(uint16_t data)
@@ -185,8 +182,8 @@ void Buffer::Write2BytesBE(uint16_t data)
     assert(Require(sizeof(uint16_t)));
 
     uint8_t* p = (uint8_t*)&data;
-    *position++ = p[0];
     *position++ = p[1];
+    *position++ = p[0];
 }
 
 void Buffer::Write4Bytes(uint32_t data)
@@ -194,10 +191,10 @@ void Buffer::Write4Bytes(uint32_t data)
     assert(Require(sizeof(uint32_t)));
 
     uint8_t* p = (uint8_t*)&data;
-    *position++ = p[3];
-    *position++ = p[2];
-    *position++ = p[1];
     *position++ = p[0];
+    *position++ = p[1];
+    *position++ = p[2];
+    *position++ = p[3];
 }
 
 void Buffer::Write4BytesBE(uint32_t data)
@@ -205,10 +202,10 @@ void Buffer::Write4BytesBE(uint32_t data)
     assert(Require(sizeof(uint32_t)));
 
     uint8_t* p = (uint8_t*)&data;
-    *position++ = p[0];
-    *position++ = p[1];
-    *position++ = p[2];
     *position++ = p[3];
+    *position++ = p[2];
+    *position++ = p[1];
+    *position++ = p[0];
 }
 
 void Buffer::WriteBytes(uint8_t* data, size_t size)

@@ -6,16 +6,19 @@
 #include "RTC/RtpPacket.hpp"
 #include "Extensions/Utils/SequenceNumberUtils.h"
 
-namespace RTC {
+namespace RTC
+{
 
 // -----------------------------------------------------------
 // File: webrtc/src/modules/video_coding/packet_buffer.h
 // -----------------------------------------------------------
 
-class PsRtpPacketBuffer {
+class PsRtpPacketBuffer
+{
     
 public:
-    struct Packet {
+    struct Packet
+    {
         Packet(const RtpPacket* rtp_packet);
         Packet(const Packet&) = delete;
         Packet(Packet&&) = delete;
@@ -36,7 +39,8 @@ public:
 
         const RtpPacket* rtp_packet;
     };
-    struct InsertResult {
+    struct InsertResult
+    {
         std::vector<std::unique_ptr<Packet>> packets;
         // Indicates if the packet buffer was cleared, which means that a key
         // frame request should be sent.

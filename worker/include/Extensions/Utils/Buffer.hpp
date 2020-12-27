@@ -8,7 +8,8 @@
 namespace RTC
 {
 
-struct BlockBuffer {
+struct BlockBuffer
+{
   const uint8_t* base;
   size_t len;
 };

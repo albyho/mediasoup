@@ -6,7 +6,8 @@
 #include <limits.h>
 #include <assert.h>
 
-namespace RTC {
+namespace RTC
+{
 
 constexpr size_t kMaxRtpPacketPayload = 1360;
 constexpr size_t KRtpPacketExpandSize = 40;
@@ -315,7 +316,8 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
         if(result.size() > packetCount)
         {
             MS_WARN_TAG(rtp, "Too many new packets.");
-            for (auto& entry : result) {
+            for (auto& entry : result)
+            {
                 delete[] entry->GetData();
                 delete entry;
             }
@@ -325,7 +327,8 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
         }
         // 设置所有包的 sequenceNumber 以及最后一包的 marker。如有必要，创建空包以保证新生成的包的数量。
         size_t emptyPacketCount = packetCount - result.size();
-        for (uint16_t i = 0; i < packetCount; i++) {
+        for (uint16_t i = 0; i < packetCount; i++)
+        {
             uint16_t currentSequenceNumber = startSequenceNumber + i;
             if(i < emptyPacketCount)
             {

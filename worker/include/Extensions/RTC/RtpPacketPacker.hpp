@@ -8,7 +8,8 @@
 #include "RTC/RtpPacket.hpp"
 #include "Extensions/Utils/Buffer.hpp"
 
-namespace RTC {
+namespace RTC
+{
 
 struct NALUHeader
 {
@@ -51,7 +52,8 @@ struct FUHeader
 #endif
 };
 
-class RtpPacketPacker {
+class RtpPacketPacker
+{
 
 public:
     static const uint8_t* H264FindNALU(const uint8_t* data, size_t searchLength);
