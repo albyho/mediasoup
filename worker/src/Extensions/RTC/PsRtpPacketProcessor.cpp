@@ -1,10 +1,10 @@
 #define MS_CLASS "RTC::PsRtpPacketProcessor"
 
-#include "PsRtpPacketProcessor.hpp"
+#include "Extensions/RTC/PsRtpPacketProcessor.hpp"
+#include "Extensions/RTC/RtpPacketPacker.hpp"
+#include "Extensions/RTC/PsRtpPacket.h"
 #include "Logger.hpp"
 #include "Settings.hpp"
-#include "PsRtpPacket.h"
-#include "RtpPacketPacker.hpp"
 
 namespace RTC
 {

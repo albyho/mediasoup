@@ -1,7 +1,8 @@
 #ifndef SequenceNumberUtils_h
 #define SequenceNumberUtils_h
 
-namespace RTC {
+namespace RTC
+{
 
 // -----------------------------------------------------------
 // File: webrtc/src/rtc_base/numerics/mod_ops.h

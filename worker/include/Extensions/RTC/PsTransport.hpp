@@ -14,7 +14,7 @@ public:
     PsTransport(const std::string& id, RTC::Transport::Listener* listener, json& data);
     ~PsTransport() override;
 
-}
+};
 
 } // namespace RTC
 

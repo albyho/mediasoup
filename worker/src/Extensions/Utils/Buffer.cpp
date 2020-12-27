@@ -1,5 +1,4 @@
-#include "Buffer.hpp"
-#include "Utilities.hpp"
+#include "Extensions/Utils/Buffer.hpp"
 
 namespace RTC
 {

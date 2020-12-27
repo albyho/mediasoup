@@ -4,7 +4,7 @@
 #include <cstdint>    // uint8_t, etc
 #include <memory>
 #include "RTC/RtpPacket.hpp"
-#include "PsRtpPacketBuffer.hpp"
+#include "Extensions/RTC/PsRtpPacketBuffer.hpp"
 
 #define PS_Payload_Type 96u
 

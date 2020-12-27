@@ -1,9 +1,9 @@
 #define MS_CLASS "RTC::PsRtpPacketBuffer"
 
-#include "PsRtpPacketBuffer.hpp"
+#include "Extensions/RTC/PsRtpPacketBuffer.hpp"
+#include "Extensions/RTC/PsRtpPacket.h"
 #include "DepLibUV.hpp"
 #include "Logger.hpp"
-#include "PsRtpPacket.h"
 
 namespace RTC
 {
