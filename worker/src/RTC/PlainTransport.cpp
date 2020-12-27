@@ -848,8 +848,18 @@ namespace RTC
                 if (!this->listenIp.announcedIp.empty())
                     this->tuple->SetLocalAnnouncedIp(this->listenIp.announcedIp);
                 
-                // 清理 RtpPacket
+                // 清理 RtpPacket 。
                 this->psRtpPacketProcessor->ClearRtpPackets();
+                
+                // 相当于重新连接，通知监听器。
+                // Notify the Node PlainTransport.
+                json data = json::object();
+
+                this->tuple->FillJson(data["tuple"]);
+
+                Channel::Notifier::Emit(this->id, "tuple", data);
+
+                RTC::Transport::Connected();
             }
             else
             {
