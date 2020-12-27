@@ -27,8 +27,10 @@ PsRtpPacketProcessor::~PsRtpPacketProcessor()
 {
     delete this->psRtpPacketBuffer;
     this->psRtpPacketBuffer = nullptr;
+    
     delete[] this->videoFrameBuffer;
     this->videoFrameBuffer = nullptr;
+    
     delete[] this->audioFrameBuffer;
     this->audioFrameBuffer = nullptr;
 }

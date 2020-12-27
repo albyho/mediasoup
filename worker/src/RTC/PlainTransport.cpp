@@ -158,6 +158,9 @@ namespace RTC
 
 		delete this->srtpRecvSession;
 		this->srtpRecvSession = nullptr;
+        
+        delete this->psRtpPacketProcessor;
+        this->psRtpPacketProcessor = nullptr;
 	}
 
 	void PlainTransport::FillJson(json& jsonObject) const

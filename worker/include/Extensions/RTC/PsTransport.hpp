@@ -6,10 +6,16 @@
 
 namespace RTC
 {
-    class PlainTransport : public RTC::PlainTransport
-    {
+
+class PsTransport : public RTC::PlainTransport
+{
     
-    }
+public:
+    PsTransport(const std::string& id, RTC::Transport::Listener* listener, json& data);
+    ~PsTransport() override;
+
+}
+
 } // namespace RTC
 
 #endif
