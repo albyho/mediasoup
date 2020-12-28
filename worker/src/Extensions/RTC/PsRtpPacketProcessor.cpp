@@ -54,6 +54,9 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
     {
         // TODO：如果新的一帧的第一个包或前几包没有 payload，在重新打包 RtpPacket 的时候会导致 seq_num 与前一帧的包不连续。
         insertResult = this->psRtpPacketBuffer->InsertPadding(rtp_packet->GetSequenceNumber());
+        delete rtp_packet->GetData();
+        delete rtp_packet;
+        rtp_packet = nullptr;
     }
 
     auto& packets = insertResult.packets;
@@ -67,6 +70,8 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
             MS_WARN_TAG(rtp, "Too many empty packets.");
             return result;
         }
+        
+        // For testing
 //        MS_DEBUG_TAG(rtp, "New H.264 frame: %02X %02X %02X %02X %02X",
 //                     this->videoFrameBuffer[0],
 //                     this->videoFrameBuffer[1],
@@ -74,7 +79,6 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
 //                     this->videoFrameBuffer[3],
 //                     this->videoFrameBuffer[4]
 //                     );
-//        auto newRtpPacketCount = packets[packets.size() - 1]->seq_num - packets[0]->seq_num;
         
         if(this->videoFrameBufferOffset > 0)
         {
