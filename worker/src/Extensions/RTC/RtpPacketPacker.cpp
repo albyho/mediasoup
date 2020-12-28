@@ -10,11 +10,16 @@ namespace RTC
 {
 
 constexpr size_t kMaxRtpPacketPayload = 1360;
-constexpr size_t KRtpPacketExpandSize = 40;
-constexpr size_t kRtpPacketHeaderSize = 12;
+// 如果 Producer::MangleRtpPacket() 对 RTP 头扩展的设置算法发生改变，则需要调整。
+constexpr size_t kFakeVideoRtpHeaderExtensionLength = 4;
+constexpr size_t kFakeVideoRtpHeaderExtensionSize = 4 + kFakeVideoRtpHeaderExtensionLength * 4;
+//constexpr size_t kFakeAudioRtpHeaderExtensionLength = 1;
+//constexpr size_t kFakeAudioRtpHeaderExtensionSize = 4 + kFakeAudioRtpHeaderExtensionLength * 4;
+constexpr size_t kRtpPacketHeaderSize = 12; /*sizeof(RtpPacket::Header)*/
 constexpr size_t kH264FUHeaderSize = 2;
 constexpr size_t kH264STAPAHeaderSize = 1;
 //constexpr size_t kH265FUHeaderSize = 3;
+//constexpr size_t kH265STAPAHeaderSize = x;
 constexpr uint8_t kFUStart = 0x80;
 //constexpr uint8_t kFMid = 0x00;
 constexpr uint8_t kFUEnd = 0x40;
@@ -96,16 +101,25 @@ RtpPacket* RtpPacketPacker::H264PackNALU(const std::shared_ptr<BlockBuffer>& nal
     assert(0 < (*nalu->base & 0x1F) && (*nalu->base & 0x1F) < 24);
     assert(nalu->len > 0);
 
-    size_t bufferLength = kRtpPacketHeaderSize/*sizeof(RtpPacket::Header)*/ + nalu->len;
+    size_t bufferLength = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + nalu->len;
     assert(bufferLength <= kMaxRtpPacketPayload);
-    auto* buffer = new uint8_t[bufferLength + KRtpPacketExpandSize];
+    auto* buffer = new uint8_t[bufferLength];
     auto* header = reinterpret_cast<RtpPacket::Header*>(buffer);
     H264RtpHeaderInit(header);
     header->marker = 0;
     header->sequenceNumber = 0;
     header->timestamp = htonl(timestamp);
     header->ssrc = htonl(ssrc);
-    std::memcpy(buffer + kRtpPacketHeaderSize/*sizeof(RtpPacket::Header)*/, nalu->base, nalu->len);
+    
+    // Fake RTP Header Extensions
+    buffer[kRtpPacketHeaderSize + 0] = 0xBE; // One Byte Extensions
+    buffer[kRtpPacketHeaderSize + 1] = 0xDE;
+    buffer[kRtpPacketHeaderSize + 2] = 0;
+    buffer[kRtpPacketHeaderSize + 3] = kFakeVideoRtpHeaderExtensionLength;
+    buffer[kRtpPacketHeaderSize + 4] = 0xF0; // id=15 意思是停止解析。即前4位为1111。
+
+    size_t payloadOffset = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize;
+    std::memcpy(buffer + payloadOffset, nalu->base, nalu->len);
 
     auto* packet = RtpPacket::Parse(buffer, bufferLength);
     return packet;
@@ -115,14 +129,14 @@ RtpPacket* RtpPacketPacker::H264PackSTAPA(const std::vector<std::shared_ptr<Bloc
 {
     // data 不包含 0x00000001
     assert(nalus.size() > 0);
-    size_t bufferLength = kRtpPacketHeaderSize + kH264STAPAHeaderSize;
+    size_t bufferLength = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264STAPAHeaderSize;
     for (auto& entry : nalus)
     {
         assert(0 < (*(entry->base) & 0x1F) && (*(entry->base) & 0x1F) < 24);
         bufferLength += sizeof(uint16_t) + entry->len;
     }
     assert(bufferLength <= kMaxRtpPacketPayload);
-    auto* buffer = new uint8_t[bufferLength + KRtpPacketExpandSize];
+    auto* buffer = new uint8_t[bufferLength];
     auto* header = reinterpret_cast<RtpPacket::Header*>(buffer);
     H264RtpHeaderInit(header);
     header->marker = 0;
@@ -130,8 +144,15 @@ RtpPacket* RtpPacketPacker::H264PackSTAPA(const std::vector<std::shared_ptr<Bloc
     header->timestamp = htonl(timestamp);
     header->ssrc = htonl(ssrc);
 
-    buffer[kRtpPacketHeaderSize + 0] = kSTAPAHeader;
-    size_t payloadOffset = kRtpPacketHeaderSize + kH264STAPAHeaderSize;
+    // Fake RTP Header Extensions
+    buffer[kRtpPacketHeaderSize + 0] = 0xBE; // One Byte Extensions
+    buffer[kRtpPacketHeaderSize + 1] = 0xDE;
+    buffer[kRtpPacketHeaderSize + 2] = 0;
+    buffer[kRtpPacketHeaderSize + 3] = kFakeVideoRtpHeaderExtensionLength;
+    buffer[kRtpPacketHeaderSize + 4] = 0xF0; // id=15 意思是停止解析。即前4位为1111。
+
+    buffer[kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + 0] = kSTAPAHeader;
+    size_t payloadOffset = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264STAPAHeaderSize;
 
     for (auto& entry : nalus)
     {
@@ -171,7 +192,7 @@ std::vector<RtpPacket *> RtpPacketPacker::H264PackFUA(const std::shared_ptr<Bloc
     fuHeader |= kFUStart;
     while (length > 0)
     {
-        if (kRtpPacketHeaderSize + kH264FUHeaderSize + length <= kMaxRtpPacketPayload)
+        if (kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264FUHeaderSize + length <= kMaxRtpPacketPayload)
         {
             assert(0 == (fuHeader & kFUStart));
             fuHeader = kFUEnd | (fuHeader & 0x1F); // FU-A end
@@ -179,24 +200,32 @@ std::vector<RtpPacket *> RtpPacketPacker::H264PackFUA(const std::shared_ptr<Bloc
         }
         else
         {
-            payloadLength = kMaxRtpPacketPayload - kRtpPacketHeaderSize - kH264FUHeaderSize;
+            payloadLength = kMaxRtpPacketPayload - (kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264FUHeaderSize);
         }
 
-        size_t bufferLength = kRtpPacketHeaderSize + kH264FUHeaderSize + payloadLength;
+        size_t bufferLength = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264FUHeaderSize + payloadLength;
         assert(bufferLength <= kMaxRtpPacketPayload);
-        auto* buffer = new uint8_t[bufferLength + KRtpPacketExpandSize];
+        auto* buffer = new uint8_t[bufferLength];
         auto* header = reinterpret_cast<RtpPacket::Header*>(buffer);
         H264RtpHeaderInit(header);
         header->marker = 0;
         header->sequenceNumber = 0;
         header->timestamp = htonl(timestamp);
         header->ssrc = htonl(ssrc);
-        size_t payloadOffset = kRtpPacketHeaderSize + kH264FUHeaderSize;
+        
+        // Fake RTP Header Extensions
+        buffer[kRtpPacketHeaderSize + 0] = 0xBE; // One Byte Extensions
+        buffer[kRtpPacketHeaderSize + 1] = 0xDE;
+        buffer[kRtpPacketHeaderSize + 2] = 0;
+        buffer[kRtpPacketHeaderSize + 3] = kFakeVideoRtpHeaderExtensionLength;
+        buffer[kRtpPacketHeaderSize + 4] = 0xF0; // id=15 意思是停止解析。即前4位为1111。
+
+        size_t payloadOffset = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264FUHeaderSize;
         std::memcpy(buffer + payloadOffset, data, payloadLength);
 
         /*fu_indicator + fu_header*/
-        buffer[kRtpPacketHeaderSize + 0] = fuIndicator;
-        buffer[kRtpPacketHeaderSize + 1] = fuHeader;
+        buffer[kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + 0] = fuIndicator;
+        buffer[kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + 1] = fuHeader;
 
         data += payloadLength;
         length -= payloadLength;
@@ -228,8 +257,8 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
         {
             // 刚好够单包，或者不够却是最后一包。
             if(
-               (kRtpPacketHeaderSize + freeSize == kMaxRtpPacketPayload) ||
-               (kRtpPacketHeaderSize + freeSize < kMaxRtpPacketPayload && i == (nalus.size() - 1))
+               (kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + freeSize == kMaxRtpPacketPayload) ||
+               (kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + freeSize < kMaxRtpPacketPayload && i == (nalus.size() - 1))
               )
             {
                 // 处理当前包
@@ -260,8 +289,8 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
         {
             // 刚好够单包，或者不够本包却是最后一包。
             if (
-                (kRtpPacketHeaderSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) == kMaxRtpPacketPayload) ||
-                ((kRtpPacketHeaderSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) < kMaxRtpPacketPayload) && (i == nalus.size() - 1))
+                (kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) == kMaxRtpPacketPayload) ||
+                ((kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) < kMaxRtpPacketPayload) && (i == nalus.size() - 1))
                )
             {
                 // 处理当前和前面的所有包
@@ -278,7 +307,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
                 naluCount = 0;
             }
             // 本包将导致超标。先处理前面的包，再决定本包的处理方式。
-            else if (kRtpPacketHeaderSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) > kMaxRtpPacketPayload)
+            else if (kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264STAPAHeaderSize + freeSize + (sizeof(uint16_t) * naluCount) > kMaxRtpPacketPayload)
             {
                 if(naluCount - 1 == 1)
                 {
@@ -353,7 +382,7 @@ void RtpPacketPacker::H264RtpHeaderInit(RtpPacket::Header* header)
 {
     header->version = 2;
     header->padding = 0;
-    header->extension = 0;
+    header->extension = 1;
     header->csrcCount = 0;
     header->marker = 0;
     header->payloadType = 98;
@@ -366,7 +395,7 @@ void RtpPacketPacker::G711ARtpHeaderInit(RtpPacket::Header* header)
 {
     header->version = 2;
     header->padding = 0;
-    header->extension = 0;
+    header->extension = 1;
     header->csrcCount = 0;
     header->marker = 0;
     header->payloadType = 8;
@@ -377,7 +406,8 @@ void RtpPacketPacker::G711ARtpHeaderInit(RtpPacket::Header* header)
 
 RtpPacket* RtpPacketPacker::GeneratePaddingH264RtpPacket(uint16_t sequenceNumber, uint32_t timestamp, uint32_t ssrc)
 {
-    auto* buffer = new uint8_t[kRtpPacketHeaderSize + KRtpPacketExpandSize];
+    size_t bufferLength = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize;
+    auto* buffer = new uint8_t[bufferLength];
     auto* header = reinterpret_cast<RtpPacket::Header*>(buffer);
     H264RtpHeaderInit(header);
     header->marker = 0;
@@ -385,7 +415,14 @@ RtpPacket* RtpPacketPacker::GeneratePaddingH264RtpPacket(uint16_t sequenceNumber
     header->timestamp = htonl(timestamp);
     header->ssrc = htonl(ssrc);
     
-    auto* packet = RtpPacket::Parse(buffer, kRtpPacketHeaderSize);
+    // Fake RTP Header Extensions
+    buffer[kRtpPacketHeaderSize + 0] = 0xBE; // One Byte Extensions
+    buffer[kRtpPacketHeaderSize + 1] = 0xDE;
+    buffer[kRtpPacketHeaderSize + 2] = 0;
+    buffer[kRtpPacketHeaderSize + 3] = kFakeVideoRtpHeaderExtensionLength;
+    buffer[kRtpPacketHeaderSize + 4] = 0xF0; // id=15 意思是停止解析。即前4位为1111。
+
+    auto* packet = RtpPacket::Parse(buffer, bufferLength);
     return packet;
 }
 
