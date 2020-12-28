@@ -6,13 +6,13 @@
 namespace RTC
 {
 
-class Utilities
-{
-    
-public:
-    static bool IsLittleEndian();
-    
-};
+    class Utilities
+    {
+        
+    public:
+        static bool IsLittleEndian();
+        
+    };
 
 } // namespace RTC
 

@@ -7,14 +7,14 @@
 namespace RTC
 {
 
-class PsTransport : public RTC::PlainTransport
-{
-    
-public:
-    PsTransport(const std::string& id, RTC::Transport::Listener* listener, json& data);
-    ~PsTransport() override;
+    class PsTransport : public RTC::PlainTransport
+    {
+        
+    public:
+        PsTransport(const std::string& id, RTC::Transport::Listener* listener, json& data);
+        ~PsTransport() override;
 
-};
+    };
 
 } // namespace RTC
 

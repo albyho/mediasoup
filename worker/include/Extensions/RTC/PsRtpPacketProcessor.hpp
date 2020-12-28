@@ -6,12 +6,12 @@
 #include "RTC/RtpPacket.hpp"
 #include "Extensions/RTC/PsRtpPacketBuffer.hpp"
 
-#define PS_Payload_Type 96u
+#define PS_Payload_Type             96u
 
-#define PS_AUDIO_ID 0xc0
-#define PS_AUDIO_ID_END 0xdf
-#define PS_VIDEO_ID 0xe0
-#define PS_VIDEO_ID_END 0xef
+#define PS_AUDIO_ID                 0xc0
+#define PS_AUDIO_ID_END             0xdf
+#define PS_VIDEO_ID                 0xe0
+#define PS_VIDEO_ID_END             0xef
 
 #define STREAM_TYPE_VIDEO_MPEG1     0x01
 #define STREAM_TYPE_VIDEO_MPEG2     0x02
@@ -38,48 +38,50 @@
 namespace RTC
 {
 
-class PsRtpPacketProcessor
-{
-public:
-    PsRtpPacketProcessor();
-    ~PsRtpPacketProcessor();
-    
-public:
-    void ClearRtpPackets();
-    std::vector<RtpPacket*> InsertRtpPacket(const RtpPacket* rtp_packet);
-    static std::string GetPSMapTypeString(uint8_t type);
-
-private:
-    enum DemuxNextPacketReadMode { Guest, ReadVideo, ReadAudio };
-    struct DemuxNextPacketReadState
+    class PsRtpPacketProcessor
     {
-        DemuxNextPacketReadMode demuxNextPacketReadMode;
-        size_t demuxNextPacketReadBytes;
-        DemuxNextPacketReadState(DemuxNextPacketReadMode demuxNextPacketReadMode, size_t demuxNextPacketReadBytes) :
-            demuxNextPacketReadMode(demuxNextPacketReadMode),
-            demuxNextPacketReadBytes(demuxNextPacketReadBytes)
+
+    public:
+        PsRtpPacketProcessor();
+        ~PsRtpPacketProcessor();
+        
+    public:
+        void ClearRtpPackets();
+        std::vector<RtpPacket*> InsertRtpPacket(const RtpPacket* rtp_packet);
+        static std::string GetPSMapTypeString(uint8_t type);
+
+    private:
+        enum DemuxNextPacketReadMode { Guest, ReadVideo, ReadAudio };
+        struct DemuxNextPacketReadState
         {
-            
-        }
+            DemuxNextPacketReadMode demuxNextPacketReadMode;
+            size_t demuxNextPacketReadBytes;
+            DemuxNextPacketReadState(DemuxNextPacketReadMode demuxNextPacketReadMode, size_t demuxNextPacketReadBytes) :
+                demuxNextPacketReadMode(demuxNextPacketReadMode),
+                demuxNextPacketReadBytes(demuxNextPacketReadBytes)
+            {
+                
+            }
+        };
+        void Demux(const std::vector<std::unique_ptr<PsRtpPacketBuffer::Packet>>& packets);
+        void Demux(const RtpPacket* rtp_packet, DemuxNextPacketReadState* demuxNextPacketReadState);
+        void FetchData(uint8_t** pesBody,
+                       size_t read,
+                       DemuxNextPacketReadState* demuxNextPacketReadState,
+                       size_t* completeLength);
+        
+    private:
+        PsRtpPacketBuffer* psRtpPacketBuffer;
+        uint8_t* videoFrameBuffer;
+        uint8_t* audioFrameBuffer;
+        size_t videoFrameBufferOffset;
+        size_t audioFrameBufferOffset;
+        uint8_t videoStreamType;
+        uint8_t audioStreamType;
+        uint8_t videoElementaryStreamId;
+        uint8_t audioElementaryStreamId;
+
     };
-    void Demux(const std::vector<std::unique_ptr<PsRtpPacketBuffer::Packet>>& packets);
-    void Demux(const RtpPacket* rtp_packet, DemuxNextPacketReadState* demuxNextPacketReadState);
-    void FetchData(uint8_t** pesBody,
-                   size_t read,
-                   DemuxNextPacketReadState* demuxNextPacketReadState,
-                   size_t* completeLength);
-    
-private:
-    PsRtpPacketBuffer* psRtpPacketBuffer;
-    uint8_t* videoFrameBuffer;
-    uint8_t* audioFrameBuffer;
-    size_t videoFrameBufferOffset;
-    size_t audioFrameBufferOffset;
-    uint8_t videoStreamType;
-    uint8_t audioStreamType;
-    uint8_t videoElementaryStreamId;
-    uint8_t audioElementaryStreamId;
-};
 
 } // namespace RTC
 

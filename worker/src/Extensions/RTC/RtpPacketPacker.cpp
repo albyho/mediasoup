@@ -97,7 +97,7 @@ const std::vector<std::shared_ptr<BlockBuffer>> RtpPacketPacker::H264FindNALUs(c
 
 RtpPacket* RtpPacketPacker::H264PackNALU(const std::shared_ptr<BlockBuffer>& nalu, uint32_t timestamp, uint32_t ssrc)
 {
-    // data 不包含 0x00000001
+    // nalu->base 不包含 0x00000001
     assert(0 < (*nalu->base & 0x1F) && (*nalu->base & 0x1F) < 24);
     assert(nalu->len > 0);
 
@@ -122,7 +122,7 @@ RtpPacket* RtpPacketPacker::H264PackNALU(const std::shared_ptr<BlockBuffer>& nal
 
 RtpPacket* RtpPacketPacker::H264PackSTAPA(const std::vector<std::shared_ptr<BlockBuffer>>& nalus, uint32_t timestamp, uint32_t ssrc)
 {
-    // data 不包含 0x00000001
+    // nalu->base 不包含 0x00000001
     assert(nalus.size() > 0);
     size_t bufferLength = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize + kH264STAPAHeaderSize;
     for (auto& entry : nalus)
@@ -161,7 +161,7 @@ RtpPacket* RtpPacketPacker::H264PackSTAPA(const std::vector<std::shared_ptr<Bloc
 
 std::vector<RtpPacket *> RtpPacketPacker::H264PackFUA(const std::shared_ptr<BlockBuffer>& nalu, uint32_t timestamp, uint32_t ssrc)
 {
-    // data 不包含 0x00000001
+    // nalu->base 不包含 0x00000001
     assert(0 < (*nalu->base & 0x1F) && (*nalu->base & 0x1F) < 24);
     assert(nalu->len > 0);
 
@@ -349,7 +349,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
             uint16_t currentSequenceNumber = startSequenceNumber + i;
             if(i < emptyPacketCount)
             {
-                auto* paddingRtpPacket = GeneratePaddingH264RtpPacket(currentSequenceNumber, timestamp, ssrc);
+                auto* paddingRtpPacket = GenerateH264PaddingRtpPacket(currentSequenceNumber, timestamp, ssrc);
                 result.insert(result.cbegin() + i, paddingRtpPacket);
             }
             else
@@ -389,7 +389,7 @@ void RtpPacketPacker::G711ARtpHeaderInit(RtpPacket::Header* header)
     header->ssrc = 0;
 }
 
-RtpPacket* RtpPacketPacker::GeneratePaddingH264RtpPacket(uint16_t sequenceNumber, uint32_t timestamp, uint32_t ssrc)
+RtpPacket* RtpPacketPacker::GenerateH264PaddingRtpPacket(uint16_t sequenceNumber, uint32_t timestamp, uint32_t ssrc)
 {
     size_t bufferLength = kRtpPacketHeaderSize + kFakeVideoRtpHeaderExtensionSize;
     auto* buffer = new uint8_t[bufferLength];
