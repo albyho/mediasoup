@@ -78,17 +78,17 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
             return result;
         }
         
-        // For testing
-//        MS_DEBUG_TAG(rtp, "New H.264 frame: %02X %02X %02X %02X %02X",
-//                     this->videoFrameBuffer[0],
-//                     this->videoFrameBuffer[1],
-//                     this->videoFrameBuffer[2],
-//                     this->videoFrameBuffer[3],
-//                     this->videoFrameBuffer[4]
-//                     );
-        
         if(this->videoFrameBufferOffset > 0)
         {
+            // For testing
+//            MS_DEBUG_TAG(rtp, "New H.264 frame: %02X %02X %02X %02X %02X",
+//                         this->videoFrameBuffer[0],
+//                         this->videoFrameBuffer[1],
+//                         this->videoFrameBuffer[2],
+//                         this->videoFrameBuffer[3],
+//                         this->videoFrameBuffer[4]
+//                         );
+            
             std::vector<RtpPacket*> newVideoPackets = RtpPacketPacker::H264Pack(this->videoFrameBuffer,
                                                              this->videoFrameBufferOffset,
                                                              packets[0]->seq_num,
@@ -173,7 +173,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
             && processPtr[3] == 0xBA)
         {
             // PS Header（通常不会跨包）
-            PsHeader *header = reinterpret_cast<PsHeader*>(processPtr);
+            auto header = reinterpret_cast<PsHeader*>(processPtr);
             header->packStuffingLength = ntohs(header->packStuffingLength);
             
             processPtr += sizeof(PsHeader);
@@ -186,7 +186,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
                 && processPtr[3] == 0xBB)
         {
             // PS System Header（通常不会跨包）
-            PsSystemHeaderPrefix *header = reinterpret_cast<PsSystemHeaderPrefix*>(processPtr);
+            auto header = reinterpret_cast<PsSystemHeaderPrefix*>(processPtr);
             header->headerLength = ntohs(header->headerLength);
 
             processPtr += sizeof(PsSystemHeaderPrefix);
@@ -199,7 +199,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
                 && processPtr[3] == 0xBC)
         {
              // PSM Header prefix（通常不会跨包）
-            PsPSMHeaderPrefix* header = reinterpret_cast<PsPSMHeaderPrefix*>(processPtr);
+            auto header = reinterpret_cast<PsPSMHeaderPrefix*>(processPtr);
             header->programStreamMapLength = ntohs(header->programStreamMapLength);
             
             processPtr += sizeof(PsPSMHeaderPrefix);
@@ -221,7 +221,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
             // /* at least one es available? */
             while (elementaryStreamMapLength >= 4)
             {
-                PsPSMElementaryStreamMap* elementaryStreamMap = reinterpret_cast<PsPSMElementaryStreamMap*>(psm);
+                auto elementaryStreamMap = reinterpret_cast<PsPSMElementaryStreamMap*>(psm);
                 elementaryStreamMap->elementaryStreamInfoLength = ntohs(elementaryStreamMap->elementaryStreamInfoLength);
                 psm += sizeof(PsPSMElementaryStreamMap);
                 psm += elementaryStreamMap->elementaryStreamInfoLength;
@@ -266,13 +266,12 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
                 && processPtr[3] == 0xBD)
         {
             // Private Stream（通常不会跨包）
-            PsePacketHeaderPrefix* header = reinterpret_cast<PsePacketHeaderPrefix*>(processPtr);
+            auto header = reinterpret_cast<PsePacketHeaderPrefix*>(processPtr);
             header->pesPacketLength = ntohs(header->pesPacketLength);
 
             size_t pesPayloadLength = header->pesPacketLength - (sizeof(header->info) + sizeof(header->pesHeaderDataLength) + header->pesHeaderDataLength);
             processPtr += sizeof(PsePacketHeaderPrefix) + header->pesHeaderDataLength + pesPayloadLength;
             completeLength += sizeof(PsePacketHeaderPrefix) + header->pesHeaderDataLength + pesPayloadLength;
-            
         }
         else if(processPtr[0] == 0x00
                 && processPtr[1] == 0x00
@@ -280,7 +279,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
                 && processPtr[3] == 0xE0)
         {
             // PES video stream
-            PsePacketHeaderPrefix* header = reinterpret_cast<PsePacketHeaderPrefix*>(processPtr);
+            auto header = reinterpret_cast<PsePacketHeaderPrefix*>(processPtr);
             header->pesPacketLength = ntohs(header->pesPacketLength);
 
             size_t pesBodyLength = header->pesPacketLength - (sizeof(header->info) + sizeof(header->pesHeaderDataLength) + header->pesHeaderDataLength);
@@ -304,7 +303,7 @@ void PsRtpPacketProcessor::Demux(const RtpPacket* rtp_packet, DemuxNextPacketRea
                 && processPtr[3] == 0xC0)
          {
             // PES audio stream
-             PsePacketHeaderPrefix* header = reinterpret_cast<PsePacketHeaderPrefix*>(processPtr);
+             auto header = reinterpret_cast<PsePacketHeaderPrefix*>(processPtr);
              header->pesPacketLength = ntohs(header->pesPacketLength);
 
              size_t pesBodyLength = header->pesPacketLength - (sizeof(header->info) + sizeof(header->pesHeaderDataLength) + header->pesHeaderDataLength);
@@ -336,6 +335,7 @@ void PsRtpPacketProcessor::FetchData(uint8_t** pesBody,
                                      size_t* completeLength)
 {
     assert(demuxNextPacketReadState->demuxNextPacketReadMode != DemuxNextPacketReadMode::Guest);
+    assert(read <= demuxNextPacketReadState->demuxNextPacketReadBytes);
     if(read == 0)
     {
         // 本包没有数据
