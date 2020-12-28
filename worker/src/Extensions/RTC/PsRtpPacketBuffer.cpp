@@ -346,4 +346,3 @@ void PsRtpPacketBuffer::UpdateMissingPackets(uint16_t seq_num)
 }
 
 } // namespace RTC
-

@@ -71,6 +71,7 @@ public:
     
 public:
     static void G711ARtpHeaderInit(RtpPacket::Header* header);
+    static void SetFakeVideoRtpHeaderExtensions(uint8_t* buffer, size_t offset);
 
 };
 

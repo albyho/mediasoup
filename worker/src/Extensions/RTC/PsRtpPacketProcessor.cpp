@@ -68,6 +68,13 @@ std::vector<RtpPacket*> PsRtpPacketProcessor::InsertRtpPacket(const RtpPacket* r
         if(this->videoFrameBufferOffset == 0 && this->audioFrameBufferOffset == 0)
         {
             MS_WARN_TAG(rtp, "Too many empty packets.");
+            for (auto& entry : packets)
+            {
+                delete[] entry->rtp_packet->GetData();
+                delete entry->rtp_packet;
+                entry->rtp_packet = nullptr;
+                entry = nullptr;
+            }
             return result;
         }
         
@@ -329,32 +336,29 @@ void PsRtpPacketProcessor::FetchData(uint8_t** pesBody,
                                      size_t* completeLength)
 {
     assert(demuxNextPacketReadState->demuxNextPacketReadMode != DemuxNextPacketReadMode::Guest);
-
-    if(read > 0)
-    {
-        if(demuxNextPacketReadState->demuxNextPacketReadMode == DemuxNextPacketReadMode::ReadVideo)
-        {
-            std::memcpy(this->videoFrameBuffer + this->videoFrameBufferOffset, *pesBody, read);
-            this->videoFrameBufferOffset += read;
-        }
-        else
-        {
-            std::memcpy(this->audioFrameBuffer + this->audioFrameBufferOffset, *pesBody, read);
-            this->audioFrameBufferOffset += read;
-        }
-
-        *pesBody += read;
-        *completeLength += read;
-        demuxNextPacketReadState->demuxNextPacketReadBytes -= read;
-        if(demuxNextPacketReadState->demuxNextPacketReadBytes == 0)
-        {
-            demuxNextPacketReadState->demuxNextPacketReadMode = DemuxNextPacketReadMode::Guest;
-            return;
-        }
-    }
-    else if(read == 0)
+    if(read == 0)
     {
         // 本包没有数据
+        return;
+    }
+    
+    if(demuxNextPacketReadState->demuxNextPacketReadMode == DemuxNextPacketReadMode::ReadVideo)
+    {
+        std::memcpy(this->videoFrameBuffer + this->videoFrameBufferOffset, *pesBody, read);
+        this->videoFrameBufferOffset += read;
+    }
+    else
+    {
+        std::memcpy(this->audioFrameBuffer + this->audioFrameBufferOffset, *pesBody, read);
+        this->audioFrameBufferOffset += read;
+    }
+
+    *pesBody += read;
+    *completeLength += read;
+    demuxNextPacketReadState->demuxNextPacketReadBytes -= read;
+    if(demuxNextPacketReadState->demuxNextPacketReadBytes == 0)
+    {
+        demuxNextPacketReadState->demuxNextPacketReadMode = DemuxNextPacketReadMode::Guest;
         return;
     }
 }
