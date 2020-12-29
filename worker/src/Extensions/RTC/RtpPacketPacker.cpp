@@ -2,9 +2,10 @@
 
 #include "Extensions/RTC/RtpPacketPacker.hpp"
 #include "Extensions/Utils/SequenceNumberUtils.h"
-#include <limits.h>
+#include <cstdint>    // uint8_t, etc
 #include <assert.h>
 #include "Logger.hpp"
+#include "Utils.hpp"
 
 namespace RTC
 {
@@ -147,9 +148,7 @@ RtpPacket* RtpPacketPacker::H264PackSTAPA(const std::vector<std::shared_ptr<Bloc
     for (auto& entry : nalus)
     {
         // NALU Size(Big endian)
-        uint8_t* p = (uint8_t*)&entry->len;
-        buffer[payloadOffset + 0] = p[1];
-        buffer[payloadOffset + 1] = p[0];
+        Utils::Byte::Set2Bytes(buffer, payloadOffset, entry->len);
         payloadOffset += 2;
         std::memcpy(buffer + payloadOffset, entry->base, entry->len);
         payloadOffset += entry->len;
@@ -326,7 +325,7 @@ std::vector<RtpPacket*> RtpPacketPacker::H264Pack(const uint8_t* data, size_t le
     {
         // 可直接传入数量而非结束序列号。这里这样做目的是为了方便验证。
         size_t packetCount = ForwardDiff<uint16_t>(startSequenceNumber, endSequenceNumber) + 1;
-        assert(packetCount < USHRT_MAX);
+        assert(packetCount < UINT16_MAX);
         // 如果 result.size() 大于 packetCount 说明序列号会发生了超标。
         if(result.size() > packetCount)
         {

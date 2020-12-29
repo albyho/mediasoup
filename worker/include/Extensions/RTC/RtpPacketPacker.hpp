@@ -6,7 +6,7 @@
 #include <set>
 #include <memory>
 #include "RTC/RtpPacket.hpp"
-#include "Extensions/Utils/Buffer.hpp"
+#include "Extensions/Utils/Buffer.h"
 
 namespace RTC
 {
